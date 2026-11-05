@@ -48,12 +48,16 @@
   .combo { min-height: 17px; margin-top: 3px; font-size: 13px; font-weight: 600; color: var(--pipe); white-space: nowrap; }
   .hud-level { padding-bottom: 20px; text-align: center; font-size: 13px; color: var(--muted); }
   .hud-level b { margin-left: 3px; font-family: var(--display); font-weight: 600; font-size: 22px; color: var(--white); }
+  .mode-tag {
+    display: block; margin: 0 auto 3px; width: max-content; padding: 1px 7px; border-radius: 3px;
+    background: var(--pipe); color: var(--hud); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  }
   .hud-lives { display: flex; justify-content: flex-end; gap: 6px; padding-bottom: 20px; }
   .life { width: 24px; height: 24px; display: block; }
 
   /* Поле */
   .field { position: relative; flex: 1; min-height: 0; }
-  canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  #game { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
 
   /* Ленты поверх поля: синяя — пропущенный трансфер, красная — новый уровень */
   .sash {
@@ -75,7 +79,7 @@
   .sash-red strong { display: block; font-family: var(--display); font-weight: 700; font-size: 38px; line-height: 1.05; text-transform: uppercase; }
   .sash-red span { display: block; margin-top: 2px; font-size: 15px; font-weight: 600; }
 
-  /* Плакаты: старт, итоги, пауза */
+  /* Плакаты: старт, итоги, пауза, вентили */
   .screen {
     position: absolute; inset: 0; z-index: 5;
     display: flex; align-items: center; justify-content: center;
@@ -85,7 +89,7 @@
   }
   .poster {
     position: relative; width: 100%; max-width: 380px; max-height: 100%;
-    overflow-x: hidden; overflow-y: auto;
+    overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch;
     padding: 28px 22px 22px; border-radius: 4px;
     background: var(--red); color: var(--white);
     box-shadow: 0 26px 60px rgba(0, 0, 0, .5);
@@ -97,7 +101,7 @@
     color: rgba(255, 255, 255, .16); transform: rotate(12deg); pointer-events: none;
   }
   .title {
-    margin: 4px 0 24px; font-family: var(--display); font-weight: 700; text-transform: uppercase;
+    margin: 4px 0 22px; font-family: var(--display); font-weight: 700; text-transform: uppercase;
     line-height: .9; transform: rotate(-6deg); transform-origin: left center;
   }
   .title .l1 { display: block; font-size: clamp(44px, 15vw, 58px); }
@@ -106,7 +110,29 @@
     background: var(--white); color: var(--red); font-size: clamp(60px, 21vw, 82px);
   }
   .lead { margin: 0 0 14px; font-size: 15px; line-height: 1.45; }
-  .rules { margin: 0 0 20px; padding: 0; list-style: none; font-size: 14px; line-height: 1.4; }
+
+  /* Переключатель режимов */
+  .modes { display: flex; margin: 0 0 14px; border: 2px solid rgba(255, 255, 255, .85); border-radius: 4px; overflow: hidden; }
+  .mode {
+    flex: 1; min-height: 40px; padding: 6px 4px; border: 0; cursor: pointer;
+    background: transparent; color: var(--white);
+    font-family: var(--display); font-weight: 600; font-size: 17px; letter-spacing: .02em;
+  }
+  .mode.on { background: var(--white); color: var(--red); }
+  .mode:focus-visible { outline: 3px solid var(--pipe); outline-offset: -3px; }
+
+  /* Правила: открыты для новичков, у остальных свёрнуты */
+  .rules-box { margin: 0 0 18px; }
+  .rules-box summary {
+    cursor: pointer; padding: 7px 0; list-style: none;
+    border-top: 1px solid rgba(255, 255, 255, .3); border-bottom: 1px solid rgba(255, 255, 255, .3);
+    font-size: 14px; font-weight: 700;
+  }
+  .rules-box summary::-webkit-details-marker { display: none; }
+  .rules-box summary::after { content: "＋"; float: right; font-weight: 400; }
+  .rules-box[open] summary::after { content: "−"; }
+  .rules-box[open] summary { border-bottom: 0; }
+  .rules { margin: 0; padding: 0; list-style: none; font-size: 14px; line-height: 1.4; }
   .rules li { padding: 7px 0; border-top: 1px solid rgba(255, 255, 255, .3); }
   .rules li:last-child { border-bottom: 1px solid rgba(255, 255, 255, .3); }
 
@@ -120,11 +146,14 @@
   .btn-main:disabled { opacity: .6; cursor: default; }
   .btn-line { margin-top: 12px; background: transparent; color: var(--white); border: 2px solid rgba(255, 255, 255, .8); font-size: 19px; }
   .btn-line:active { background: rgba(255, 255, 255, .12); }
+  .btn-small { min-height: 44px; font-size: 17px; }
   .btn:focus-visible { outline: 3px solid var(--pipe); outline-offset: 3px; }
   .small { margin: 12px 0 0; font-size: 13px; line-height: 1.4; color: rgba(255, 255, 255, .92); text-align: center; }
   .small:empty { display: none; }
 
   .over-title { margin: 0; font-family: var(--display); font-weight: 700; font-size: 34px; line-height: 1; text-transform: uppercase; }
+  .over-kicker { margin: 0 0 6px; font-size: 13px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: rgba(255, 255, 255, .85); }
+  .over-kicker:empty { display: none; }
   .final { display: flex; align-items: baseline; gap: 10px; margin: 12px 0 2px; }
   .final .big { font-family: var(--display); font-weight: 700; font-size: 96px; line-height: .9; font-variant-numeric: tabular-nums; }
   .final .unit { color: rgba(255, 255, 255, .92); font-size: 16px; }
@@ -138,20 +167,39 @@
   .report dd { margin: 0; font-family: var(--display); font-weight: 600; font-size: 19px; white-space: nowrap; }
   .pause-lead { margin-top: 10px; }
 
+  /* Коллекция вентилей */
+  .skins { display: grid; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 10px; margin: 0 0 18px; }
+  .skin {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    min-height: 150px; padding: 10px 8px; border: 2px solid rgba(255, 255, 255, .35); border-radius: 4px;
+    background: rgba(0, 0, 0, .16); color: var(--white); cursor: pointer; text-align: center; font-family: var(--text);
+  }
+  .skin canvas { display: block; width: 64px; height: 64px; }
+  .skin b { font-family: var(--display); font-weight: 600; font-size: 17px; line-height: 1.1; }
+  .skin span { font-size: 12px; line-height: 1.3; color: rgba(255, 255, 255, .88); }
+  .skin.locked { cursor: default; }
+  .skin.locked canvas, .skin.locked b { opacity: .55; }
+  .skin.on { border-color: var(--white); background: rgba(255, 255, 255, .16); }
+  .skin:focus-visible { outline: 3px solid var(--pipe); outline-offset: 2px; }
+
   /* Невысокие экраны (iPhone SE и похожие): ужимаем плакаты, чтобы кнопка была видна сразу */
   @media (max-height: 700px) {
     .poster { padding: 20px 18px 16px; }
-    .title { margin-bottom: 16px; }
+    .title { margin-bottom: 14px; }
     .title .l1 { font-size: clamp(36px, 12vw, 48px); }
     .title .l2 { margin-top: 6px; padding: 2px 40px 6px; font-size: clamp(48px, 16vw, 64px); }
     .lead { margin-bottom: 10px; font-size: 14px; line-height: 1.4; }
-    .rules { margin-bottom: 14px; font-size: 13px; line-height: 1.35; }
+    .modes { margin-bottom: 10px; }
+    .mode { min-height: 36px; font-size: 16px; }
+    .rules-box { margin-bottom: 12px; }
+    .rules { font-size: 13px; line-height: 1.35; }
     .rules li { padding: 5px 0; }
     .final .big { font-size: 72px; }
     .verdict { margin: 8px 0 12px; font-size: 15px; }
     .report { margin-bottom: 14px; }
     .report div { padding: 5px 0; }
     .sash.sash-blue { font-size: 14px; }
+    .btn-line { margin-top: 10px; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -167,7 +215,7 @@
       <div class="hud-score"><span class="num" id="score">0</span><span class="unit" id="score-unit">очков</span></div>
       <div class="combo" id="combo"></div>
     </div>
-    <div class="hud-level">уровень <b id="level">1</b></div>
+    <div class="hud-level"><span class="mode-tag" id="mode-tag" hidden>газ дня</span>уровень <b id="level">1</b></div>
     <div class="hud-lives" id="lives" role="img" aria-label="Осталось кранов: 3"></div>
   </header>
 
@@ -182,14 +230,22 @@
     <div class="poster">
       <svg class="poster-wheel" viewBox="0 0 100 100" aria-hidden="true"><path d="M50 10V90M15.36 30L84.64 70M15.36 70L84.64 30" stroke="currentColor" stroke-width="7" stroke-linecap="round"/><circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" stroke-width="9"/><circle cx="50" cy="50" r="11" fill="currentColor"/></svg>
       <h1 class="title" id="start-title"><span class="l1">Перекрой</span><span class="l2">газ!</span></h1>
-      <p class="lead">Газовые деньги текут по трубам прямо в кассу Зенита. Перекрывай краны, пока там не купили ещё одного легионера.</p>
-      <ul class="rules">
-        <li><b>Тапни по трубе</b> — кран закроется. Успел рано — бонус.</li>
-        <li><b>Золотой поток</b> — трансфер звезды, втрое больше очков.</li>
-        <li><b>Серия без промахов</b> удваивает, а потом утраивает очки.</li>
-        <li><b>Три пропущенных трансфера</b> — и газ прорвался.</li>
-      </ul>
+      <div class="modes" role="tablist" aria-label="Режим игры">
+        <button class="mode on" id="mode-week" type="button" role="tab" aria-selected="true">Топ недели</button>
+        <button class="mode" id="mode-daily" type="button" role="tab" aria-selected="false">🔥 Газ дня</button>
+      </div>
+      <p class="lead" id="start-lead"></p>
+      <details class="rules-box" id="rules-box">
+        <summary>Как играть</summary>
+        <ul class="rules">
+          <li><b>Тапни по трубе</b> — кран закроется. Успел рано — бонус.</li>
+          <li><b>Золотой поток</b> — трансфер звезды, втрое больше очков.</li>
+          <li><b>Серия без промахов</b> удваивает, а потом утраивает очки.</li>
+          <li><b>Три пропущенных трансфера</b> — и газ прорвался.</li>
+        </ul>
+      </details>
       <button class="btn btn-main" id="btn-start" type="button">Играть</button>
+      <button class="btn btn-line btn-small" id="btn-skins" type="button">🎨 Вентили</button>
       <p class="small" id="best-start"></p>
     </div>
   </section>
@@ -197,6 +253,7 @@
   <section class="screen" id="screen-over" aria-labelledby="over-title" hidden>
     <div class="poster">
       <svg class="poster-wheel" viewBox="0 0 100 100" aria-hidden="true"><path d="M50 10V90M15.36 30L84.64 70M15.36 70L84.64 30" stroke="currentColor" stroke-width="7" stroke-linecap="round"/><circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" stroke-width="9"/><circle cx="50" cy="50" r="11" fill="currentColor"/></svg>
+      <p class="over-kicker" id="over-kicker"></p>
       <h2 class="over-title" id="over-title">Газ прорвался!</h2>
       <div class="final"><span class="big" id="final-score">0</span><span class="unit" id="final-unit">очков</span></div>
       <p class="verdict" id="verdict"></p>
@@ -215,8 +272,17 @@
   <section class="screen" id="screen-pause" aria-labelledby="pause-title" hidden>
     <div class="poster">
       <h2 class="over-title" id="pause-title">Пауза</h2>
-      <p class="lead pause-lead">Газ подождёт. Зенит — тоже.</p>
+      <p class="lead pause-lead" id="pause-lead"></p>
       <button class="btn btn-main" id="btn-resume" type="button">Продолжить</button>
+    </div>
+  </section>
+
+  <section class="screen" id="screen-skins" aria-labelledby="skins-title" hidden>
+    <div class="poster">
+      <h2 class="over-title" id="skins-title">Вентили</h2>
+      <p class="lead pause-lead">Открываются за ачивки в боте (👤 Профиль). Выбери, каким краном перекрывать газ.</p>
+      <div class="skins" id="skins-grid"></div>
+      <button class="btn btn-main" id="btn-skins-done" type="button">Готово</button>
     </div>
   </section>
 </div>
@@ -226,41 +292,79 @@
   'use strict';
 
   /* ================= Тексты игры — меняй как хочешь ================= */
-  const MISS_LINES = [
-    'Трансфер прошёл! Ещё один вингер едет в Питер',
-    'Минус бюджет, плюс легионер',
-    'Купили защитника. Будет греть скамейку',
-    'Новый легионер! Пока не выучил слово «поребрик»',
-    'Ещё 50 миллионов улетели в Бразилию',
-    'Подписали «проект на будущее»',
-    'Новичок уже в шоке от питерской погоды',
+  const MISS_LINES = [ // синяя плашка: поток дошёл до кассы
+    'Круговорот газа в Питере: труба, касса, скамейка',
+    'Купили игрока. Позицию придумают потом',
+    'Ещё защитник. Защищать будет скамейку',
+    'Минус бюджет, плюс легионер. Баланс сошёлся',
+    'Взяли кого-то. Кого именно — уточняют',
+    'Любовь с первого взгляда. Пункт 7.3 контракта',
+    'Касса ликует. Трибуны молчат по привычке',
+    'За окном дождь. В кассе Зенита — ливень',
+    'Контракт подписан. Про дождь — мелким шрифтом',
+    'Легионеру выдали бадлон и Подорожник. Мяч — потом',
+    'Плюс один. Номера на футболках закончились',
+    'Моргнул? Зенит уже купил ещё одного',
+    'Купили не глядя. Традиция клуба',
+    'Трансфер — за минуту. Стадион — чуть дольше',
+    'Подписали ещё одного. Ручка просит отпуск',
+    'Новичок приехал. Зонт выдали раньше формы',
   ];
-  const STAR_MISS_LINES = [
-    'Звёздный трансфер! 100 миллионов — и сразу на скамейку',
-    'Купили звезду. Пресс-релиз длиннее его сезона',
+  const STAR_MISS_LINES = [ // пропущен золотой поток
+    'Звезду купили. Солнце над Питером — пока нет',
+    'Ценник звёздный. Касса даже не вздрогнула',
+    'Взяли звезду. И ещё одну — про запас',
+    'Трансфер века! Уже третий на этой неделе',
+    'Звезда приехала. Скамейку ей уже позолотили',
+    'Звёздный трансфер. На сдачу взяли защитника',
+    'Новая звезда. Её свет дойдёт до поля через годы',
+    'Звезду оформили. Чек длиннее Невского',
   ];
   const LEVEL_LINES = {
-    2: 'Трансферное окно открылось',
-    3: 'Пошли звёздные трансферы',
-    4: 'В Питере начался дождь',
-    5: 'Газ идёт под давлением',
-    6: 'Крыша стадиона опять протекает',
-    7: 'Бюджет бездонный',
-    8: 'Ливень. Обычный питерский вторник',
+    2: 'Трансферное окно настежь',
+    3: 'Пошло золото: касса хочет звезду',
+    4: 'В Питере дождь. Вот это новость',
+    5: 'Давление растёт. Аппетиты — тоже',
+    6: 'Стадион закрыл крышу. Касса — нет',
+    7: 'Дно бюджета ищут водолазы',
+    8: 'Ливень. Для Питера — солнечно',
+    9: 'Агенты ночуют у парадной',
+    10: 'Газ хлещет. Касса трещит по швам',
+    11: 'Белые ночи: скупают круглосуточно',
+    12: 'Окно закрывается — берут всех',
   };
-  const LEVEL_LINE_DEFAULT = 'Газ не кончается — держись';
+  const LEVEL_LINE_DEFAULT = 'Касса Зенита дрожит. Дожимай';
   const VERDICTS = [ // [от скольки очков, текст]
-    [0, 'Газ хлещет рекой, а Зенит скупает пол-лиги. Соберись!'],
-    [60, 'Разминка засчитана. Но пара легионеров всё-таки проскочила.'],
-    [180, 'Хорош! Трансферный бюджет Зенита заметно похудел.'],
-    [300, 'Мощно! В Питере уже экономят на шаверме.'],
-    [450, 'Легенда! Штурвал можно вешать на стену как трофей.'],
+    [0, 'Газ даже не притормозил. В Питере уже заказали салют.'],
+    [60, 'Разминка засчитана. Зенит за это время купил троих.'],
+    [180, 'Прижал! Зенит отложил покупку запасного для запасных.'],
+    [300, 'Мощно! В кассе Зенита гуляет ветер. Как на Неве в ноябре.'],
+    [450, 'Касса Зенита в панике: трансферы теперь согласуют с тобой.'],
+    [700, 'Легенда! Газ перекрыт. В Питере ищут, у кого занять на трансфер.'],
+  ];
+  const START_LEAD = 'Газовые деньги текут по трубам прямо в кассу Зенита. Перекрывай краны. Прозеваешь — купят ещё одного легионера. На скамейку.';
+  const DAILY_LEAD = 'Одна попытка в день, газ у всех один и тот же. Серия дней подряд копится в боте. Отмазки не принимаются.';
+  const PAUSE_LEAD = 'Газ на паузе. Трансферы — никогда.';
+  const START_BANNER = 'Газ пошёл. Кассу Зенита — на диету';
+  const DAILY_BANNER = 'Попытка одна. Переигровки не будет';
+  const DAILY_OVER_TITLE = 'Газ дня прорвался!';
+
+  /* Вентили. Порядок важен: совпадает со списком SKINS в bot.py (номер = бит в ссылке sk=...). */
+  const SKINS = [
+    { id: 'classic', name: 'Народный', hint: 'Есть у всех', ring: '#d6152c', spoke: '#ffffff', hub: '#ffffff' },
+    { id: 'chrome', name: 'Хром', hint: '40 кранов подряд без пропуска', grad: ['#f4f7fb', '#8d99a8', '#e9eef4', '#6f7b8a'], spoke: '#dfe5ec', hub: '#ffffff' },
+    { id: 'gold', name: 'Золото', hint: 'Серия из 25 кранов', grad: ['#fff3b0', '#d99a00', '#ffe066', '#b37a00'], spoke: '#fff3c4', hub: '#ffd34d' },
+    { id: 'star', name: 'Звёздный', hint: '5 звёздных трансферов за игру', ring: '#ffffff', spoke: '#ffd34d', hub: '#ffd34d', fx: 'star' },
+    { id: 'retro', name: 'Ретро-1922', hint: 'Газ дня 7 дней подряд', ring: '#7a1020', spoke: '#f3e6c8', hub: '#f3e6c8', fx: 'rivets' },
+    { id: 'prophet', name: 'Пророк', hint: 'Точный счёт в дерби', ring: '#ffffff', spoke: '#d6152c', hub: '#d6152c', fx: 'glow' },
+    { id: 'agitator', name: 'Агитатор', hint: 'Друг по твоей ссылке сыграл 3 игры', spoke: '#ffffff', hub: '#d6152c', fx: 'stripes' },
+    { id: 'stoker', name: 'Кочегар', hint: '50 записанных игр', ring: '#2b2f36', spoke: '#ff8c1a', hub: '#ffb347', fill: 'rgba(255, 120, 20, 0.22)', fx: 'ember' },
   ];
 
   /* ================= Сложность ================= */
   const ROWS = 5;                 // труб на поле
   const LIVES = 3;                // сколько трансферов можно пропустить
-  const CLOSES_PER_LEVEL = 8;     // перекрытых кранов до следующего уровня
+  const CLOSES_PER_LEVEL = 8;     // перекрытых кранов до следующего уровня (такое же число в bot.py — иначе бот не примет результат)
   const FAST_ZONE = 0.35;         // перекрыл раньше этой доли трубы — бонусное очко
   const spawnInterval = (lvl) => Math.max(0.22, 1.15 * Math.pow(0.9, lvl - 1)); // сек между потоками
   const travelTime = (lvl) => Math.max(0.75, 3.2 * Math.pow(0.9, lvl - 1));     // сек, за которые поток доходит до крана
@@ -300,9 +404,16 @@
     } catch (e) {}
   }
 
+  const memory = {}; // запасная память, если браузер не даёт localStorage
   const store = {
-    get(key) { try { return window.localStorage.getItem(key); } catch (e) { return null; } },
-    set(key, value) { try { window.localStorage.setItem(key, value); } catch (e) {} },
+    get(key) {
+      if (key in memory) return memory[key];
+      try { return window.localStorage.getItem(key); } catch (e) { return null; }
+    },
+    set(key, value) {
+      memory[key] = value;
+      try { window.localStorage.setItem(key, value); } catch (e) {}
+    },
   };
 
   /* ================= Помощники ================= */
@@ -319,31 +430,125 @@
   const pointsWord = (n) => plural(n, 'очко', 'очка', 'очков');
   function tier(list, value) { let text = list[0][1]; for (const [min, t] of list) if (value >= min) text = t; return text; }
   const fmt = (n) => Math.round(n).toLocaleString('ru-RU');
+  const MONTHS = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+
+  // Газ дня: дата по Москве и одинаковый для всех генератор случайных чисел на этот день
+  function moscowDay() { return new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10); }
+  function dayLabel(day) { const [, m, d] = day.split('-').map(Number); return `${d} ${MONTHS[m - 1]}`; }
+  function seedFrom(text) {
+    let h = 2166136261;
+    for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return h >>> 0;
+  }
+  function mulberry32(a) {
+    return function () {
+      a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
 
   const field = $('field');
   const canvas = $('game');
   const ctx = canvas.getContext('2d');
   const ui = {
-    score: $('score'), scoreUnit: $('score-unit'), level: $('level'), lives: $('lives'), combo: $('combo'),
+    score: $('score'), scoreUnit: $('score-unit'), level: $('level'), lives: $('lives'), combo: $('combo'), modeTag: $('mode-tag'),
     toast: $('toast'), banner: $('banner'), bannerTitle: $('banner-title'), bannerText: $('banner-text'),
-    start: $('screen-start'), over: $('screen-over'), pause: $('screen-pause'),
+    start: $('screen-start'), over: $('screen-over'), pause: $('screen-pause'), skins: $('screen-skins'),
+    modeWeek: $('mode-week'), modeDaily: $('mode-daily'), startLead: $('start-lead'), rulesBox: $('rules-box'),
+    btnStart: $('btn-start'), btnSkins: $('btn-skins'), skinsGrid: $('skins-grid'),
     finalScore: $('final-score'), finalUnit: $('final-unit'), verdict: $('verdict'),
+    overTitle: $('over-title'), overKicker: $('over-kicker'), btnAgain: $('btn-again'),
     stClosed: $('st-closed'), stSaved: $('st-saved'), stCombo: $('st-combo'),
     bestStart: $('best-start'), bestOver: $('best-over'), sendNote: $('send-note'), btnSend: $('btn-send'),
   };
 
   /* ================= Состояние ================= */
   const reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const params = new URLSearchParams(window.location.search);
   let state = 'menu'; // menu | playing | paused | over
+  let mode = params.get('mode') === 'daily' ? 'daily' : 'week'; // week — топ недели, daily — газ дня
+  let playDay = '';                // за какой день идёт газ дня
+  let rng = Math.random;           // в газе дня — одинаковый для всех
   let score = 0, lives = LIVES, level = 1, closed = 0, combo = 0, bestCombo = 0, saved = 0, playTime = 0, spawnTimer = 0;
+  let starsClosed = 0, cleanRun = 0, bestClean = 0; // для ачивок: звёзды и краны подряд без пропуска
+  let spawnCount = 0;   // в газе дня темп растёт по числу потоков — одинаково у всех
   let freezeTimer = 0; // короткая передышка, пока висит лента нового уровня
   let flows = [], drains = [], valveAngle = [], valveSpin = [], slotFlash = [], particles = [], floaters = [], shake = 0;
   let W = 0, H = 0, L = null, drops = [];
   let best = parseInt(store.get('gaz_best') || '0', 10) || 0;
-  let lastFrame = 0, toastTimer = 0, bannerTimer = 0;
+  let lastFrame = 0, toastTimer = 0, bannerTimer = 0, sendTimer = 0;
+  let lastPayload = '';
+
+  // Открытые вентили: бот передаёт их в ссылке (sk=...), запоминаем на случай старой кнопки
+  let unlocked = 1 | (parseInt(params.get('sk') || '0', 10) || 0) | (parseInt(store.get('gaz_mask') || '0', 10) || 0);
+  store.set('gaz_mask', String(unlocked));
+  let skinIndex = clamp(parseInt(store.get('gaz_skin') || '0', 10) || 0, 0, SKINS.length - 1);
+  if (!(unlocked & (1 << skinIndex))) skinIndex = 0;
+  const isUnlocked = (i) => !!(unlocked & (1 << i));
+
+  function moscowHour() { return new Date(Date.now() + 3 * 3600 * 1000).getUTCHours(); }
+  function prevDay(day) {
+    const d = new Date(day + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() - 1);
+    return d.toISOString().slice(0, 10);
+  }
+  function readDaily() { try { return JSON.parse(store.get('gaz_daily') || 'null'); } catch (e) { return null; } }
+  function dailyState() {
+    const s = readDaily();
+    if (!s || typeof s !== 'object') return null;
+    const today = moscowDay();
+    if (s.day === today) return s;
+    // Вчерашний неотправленный результат бот ещё примет в первый час после полуночи
+    if (s.payload && !s.sent && s.day === prevDay(today) && moscowHour() < 1) return s;
+    return null;
+  }
+
+  // Попытку газа дня дублируем в облако Telegram — тогда она общая для телефона и компьютера
+  const cloud = (tg && tgAtLeast('6.9') && tg.CloudStorage) ? tg.CloudStorage : null;
+  let cloudReady = !cloud;
+  const dailyRank = (s) => (!s ? 0 : s.sent ? 3 : s.payload ? 2 : s.started ? 1 : 0);
+  function saveDaily(s) {
+    const value = JSON.stringify(s);
+    store.set('gaz_daily', value);
+    if (cloud) { try { cloud.setItem('gaz_daily', value, () => {}); } catch (e) {} }
+  }
+  function loadCloudDaily() {
+    if (!cloud) return;
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true; cloudReady = true;
+      if (state === 'menu') renderStart();
+    };
+    const timer = setTimeout(finish, 1500);
+    try {
+      cloud.getItem('gaz_daily', (err, value) => {
+        clearTimeout(timer);
+        if (!err && value) {
+          try {
+            const remote = JSON.parse(value), local = readDaily();
+            const newer = remote && typeof remote.day === 'string' && (!local || !local.day || remote.day > local.day
+              || (remote.day === local.day && dailyRank(remote) > dailyRank(local)));
+            if (newer) {
+              store.set('gaz_daily', value);
+              if (finished && state === 'menu') renderStart(); // ответ облака пришёл позже — обновим кнопку
+            }
+          } catch (e) {}
+        }
+        finish();
+      });
+    } catch (e) { clearTimeout(timer); finish(); }
+  }
+  function closingGuard(on) { // во время газа дня Telegram переспросит, прежде чем закрыть игру
+    if (!tg || !tgAtLeast('6.2')) return;
+    try { if (on) tg.enableClosingConfirmation(); else tg.disableClosingConfirmation(); } catch (e) {}
+  }
 
   function resetGame() {
     score = 0; lives = LIVES; level = 1; closed = 0; combo = 0; bestCombo = 0; saved = 0; playTime = 0;
+    starsClosed = 0; cleanRun = 0; bestClean = 0; spawnCount = 0;
     spawnTimer = 0.6; freezeTimer = 0;
     flows = new Array(ROWS).fill(null);
     drains = []; particles = []; floaters = [];
@@ -366,6 +571,7 @@
     ui.score.textContent = score;
     ui.scoreUnit.textContent = pointsWord(score);
     ui.level.textContent = level;
+    ui.modeTag.hidden = mode !== 'daily';
     let html = '';
     for (let i = 0; i < LIVES; i++) html += valveIcon(i < lives);
     ui.lives.innerHTML = html;
@@ -421,14 +627,26 @@
   const rainCount = () => Math.min(MAX_DROPS, 24 + level * 16);
 
   /* ================= Игровая логика ================= */
+  // Темп игры. В газе дня он растёт по числу выпущенных потоков, а не по успехам игрока —
+  // поэтому трубы, звёзды и скорость у всех одинаковые.
+  const paceLevel = () => (mode === 'daily' ? 1 + Math.floor(spawnCount / CLOSES_PER_LEVEL) : level);
+
   function spawnFlow() {
-    const free = [];
-    for (let i = 0; i < ROWS; i++) if (!flows[i]) free.push(i);
-    if (!free.length) return;
-    const row = pick(free);
-    const star = Math.random() < starChance(level);
-    const speed = (star ? 1.45 : 1) * (0.9 + Math.random() * 0.2) / travelTime(level);
-    flows[row] = { p: 0, speed, star, money: star ? 80 + Math.round(Math.random() * 70) : 15 + Math.round(Math.random() * 35) };
+    // Всегда берём четыре случайных числа — так в газе дня у всех одинаковая последовательность
+    const rRow = rng(), rStar = rng(), rSpeed = rng(), rMoney = rng();
+    spawnCount += 1;
+    const lv = paceLevel();
+    let row = Math.min(ROWS - 1, Math.floor(rRow * ROWS));
+    if (flows[row]) { // труба занята — поток уходит в одну из свободных
+      const free = [];
+      for (let i = 0; i < ROWS; i++) if (!flows[i]) free.push(i);
+      if (!free.length) return;
+      const frac = rRow * ROWS - Math.floor(rRow * ROWS);
+      row = free[Math.min(free.length - 1, Math.floor(frac * free.length))];
+    }
+    const star = rStar < starChance(lv);
+    const speed = (star ? 1.45 : 1) * (0.9 + rSpeed * 0.2) / travelTime(lv);
+    flows[row] = { p: 0, speed, star, money: star ? 80 + Math.round(rMoney * 70) : 15 + Math.round(rMoney * 35) };
   }
 
   function update(dt) {
@@ -437,7 +655,7 @@
     spawnTimer -= dt;
     if (spawnTimer <= 0) {
       spawnFlow();
-      spawnTimer = spawnInterval(level) * (0.75 + Math.random() * 0.5);
+      spawnTimer = spawnInterval(paceLevel()) * (0.75 + rng() * 0.5);
     }
     for (let i = 0; i < ROWS; i++) {
       const f = flows[i];
@@ -469,6 +687,8 @@
     const fast = f.p < FAST_ZONE;
     const pts = ((f.star ? 3 : 1) + (fast ? 1 : 0)) * mult;
     score += pts; closed += 1; saved += f.money;
+    if (f.star) starsClosed += 1;
+    cleanRun += 1; bestClean = Math.max(bestClean, cleanRun);
     valveSpin[row] = 28;
     burst(vx, vy, [C.red, C.white, C.red], 14, 230);
     floatText(vx, vy - 4, '+' + pts, f.star ? C.gold : C.white, 22);
@@ -487,6 +707,7 @@
 
   function onMiss(row, f) {
     lives -= 1; combo = 0;
+    cleanRun = 0;
     slotFlash[row] = 1;
     const kx = W - L.side - L.safeW / 2, ky = L.rowsY[row];
     burst(kx, ky, [C.gasLight, C.gas, C.gold], 18, 260);
@@ -530,12 +751,82 @@
   }
 
   /* ================= Экраны ================= */
+  function hideScreens() {
+    ui.start.hidden = true; ui.over.hidden = true; ui.pause.hidden = true; ui.skins.hidden = true;
+  }
+
+  function setMode(m) {
+    mode = m;
+    ui.modeWeek.classList.toggle('on', m === 'week');
+    ui.modeDaily.classList.toggle('on', m === 'daily');
+    ui.modeWeek.setAttribute('aria-selected', String(m === 'week'));
+    ui.modeDaily.setAttribute('aria-selected', String(m === 'daily'));
+    renderStart();
+  }
+
+  function renderStart() {
+    ui.btnSkins.textContent = `🎨 Вентили ${countUnlocked()}/${SKINS.length}`;
+    ui.btnStart.disabled = false;
+    if (mode === 'daily' && !cloudReady) {
+      ui.startLead.textContent = DAILY_LEAD;
+      ui.btnStart.textContent = 'Проверяю попытку…';
+      ui.btnStart.disabled = true;
+      ui.bestStart.textContent = '';
+      return;
+    }
+    if (mode === 'week') {
+      ui.startLead.textContent = START_LEAD;
+      ui.btnStart.textContent = 'Играть';
+      ui.bestStart.textContent = best > 0 ? `Личный рекорд: ${best}` : '';
+      return;
+    }
+    const s = dailyState();
+    ui.startLead.textContent = DAILY_LEAD;
+    if (!s) {
+      ui.btnStart.textContent = 'Перекрыть газ дня';
+      ui.bestStart.textContent = `Газ дня, ${dayLabel(moscowDay())}. Новый — в полночь по Москве.`;
+    } else if (s.payload && !s.sent) {
+      ui.btnStart.textContent = `Записать газ дня: ${s.score}`;
+      ui.bestStart.textContent = inTelegram ? 'Результат ещё не в боте — запиши его.'
+        : 'Чтобы записать результат, открой игру кнопкой «🔥 Газ дня» в чате с ботом.';
+    } else {
+      ui.btnStart.textContent = 'Обычная игра';
+      ui.bestStart.textContent = (s.score !== undefined ? `Газ дня уже перекрыт: ${s.score} ${pointsWord(s.score)}. ` : 'Попытка дня уже использована. ')
+        + 'Новый газ — в полночь по Москве.';
+    }
+  }
+
+  function onStartButton() {
+    // Экран мог устареть (полночь, 01:00, позднее облако) — действуем, только если надпись не поменялась
+    const shown = ui.btnStart.textContent;
+    renderStart();
+    if (ui.btnStart.textContent !== shown || ui.btnStart.disabled) return;
+    if (mode === 'daily') {
+      const s = dailyState();
+      if (s && s.payload && !s.sent) { lastPayload = s.payload; sendResult(); return; }
+      if (s) { setMode('week'); startGame(); return; }
+    }
+    startGame();
+  }
+
   function startGame() {
     resetGame();
-    ui.start.hidden = true; ui.over.hidden = true; ui.pause.hidden = true;
+    hideScreens();
     ui.toast.classList.remove('show');
+    store.set('gaz_played', '1');
+    if (mode === 'daily') {
+      playDay = moscowDay();
+      rng = mulberry32(seedFrom('gaz:' + playDay));
+      saveDaily({ day: playDay, started: true }); // попытка одна: засчитываем сразу при старте
+      closingGuard(true);
+    } else {
+      playDay = '';
+      rng = Math.random;
+    }
+    renderHud();
     state = 'playing';
-    showBanner('Уровень 1', 'Перекрывай краны, пока Зенит не скупил лигу', 1.3);
+    if (mode === 'daily') showBanner('Газ дня', DAILY_BANNER, 1.3);
+    else showBanner('Уровень 1', START_BANNER, 1.3);
     freezeTimer = 1.3;
     haptic('light');
   }
@@ -549,10 +840,26 @@
     ui.pause.hidden = true;
     state = 'playing';
   }
+  function buildPayload() {
+    const data = {
+      v: 2, game: 'gaz', mode, score, level, closed, best_combo: bestCombo,
+      duration: Math.round(playTime * 10) / 10,
+      clean: bestClean, stars: starsClosed, saved,
+      skin: SKINS[skinIndex].id,
+    };
+    if (mode === 'daily') data.day = playDay;
+    return JSON.stringify(data);
+  }
   function gameOver() {
     state = 'over';
+    closingGuard(false);
     const record = score > best;
     if (record) { best = score; store.set('gaz_best', String(best)); }
+    lastPayload = buildPayload();
+    const daily = mode === 'daily';
+    if (daily) saveDaily({ day: playDay, started: true, score, payload: lastPayload, sent: false });
+    ui.overKicker.textContent = daily ? `🔥 Газ дня, ${dayLabel(playDay)}` : '';
+    ui.overTitle.textContent = daily ? DAILY_OVER_TITLE : 'Газ прорвался!';
     ui.finalScore.textContent = score;
     ui.finalUnit.textContent = pointsWord(score);
     ui.verdict.textContent = tier(VERDICTS, score);
@@ -560,39 +867,157 @@
     ui.stSaved.textContent = fmt(saved) + ' млн ₽';
     ui.stCombo.textContent = bestCombo;
     ui.bestOver.textContent = record && score > 0 ? 'Новый личный рекорд!' : `Личный рекорд: ${best}`;
-    ui.bestStart.textContent = `Личный рекорд: ${best}`;
+    ui.btnSend.textContent = daily ? 'Записать газ дня' : 'Записать в топ';
+    ui.btnAgain.textContent = daily ? 'Обычная игра' : 'Сыграть ещё раз';
     ui.sendNote.textContent = '';
     ui.btnSend.disabled = false;
     if (!inTelegram) {
       ui.btnSend.hidden = true;
       ui.sendNote.textContent = 'Чтобы попасть в топ, открой игру через бота кнопкой «🎮 Играть».';
-    } else if (score === 0) {
+    } else if (score === 0 && !daily) {
       ui.btnSend.hidden = true;
       ui.sendNote.textContent = 'С нулём в топ не берут. Попробуй ещё раз!';
     } else {
       ui.btnSend.hidden = false;
+      if (daily) ui.sendNote.textContent = score === 0
+        ? 'С нулём в топ недели не попадёшь, но серия газа дня сохранится — запиши.'
+        : 'Попытка дня одна — не забудь записать результат.';
     }
     setTimeout(() => { if (state === 'over') ui.over.hidden = false; }, 500);
   }
 
-  const SEND_HINT = 'Не получилось отправить. Открой игру кнопкой «🎮 Играть» под полем ввода в чате с ботом — тогда результат попадёт в топ.';
+  const SEND_HINT = 'Не получилось отправить. Открой игру кнопкой «🎮 Играть» или «🔥 Газ дня» под полем ввода в чате с ботом — тогда результат попадёт в топ.';
+  function markDailySent(sent) {
+    const s = readDaily();
+    if (s && s.payload && s.payload === lastPayload) { s.sent = sent; saveDaily(s); }
+  }
   function sendResult() {
-    if (!tg) return;
-    const payload = JSON.stringify({
-      v: 1, game: 'gaz', score, level, closed, best_combo: bestCombo,
-      duration: Math.round(playTime * 10) / 10,
-    });
+    if (!tg || !lastPayload) return;
     ui.btnSend.disabled = true;
+    ui.btnStart.disabled = true;
+    markDailySent(true);
     try {
-      tg.sendData(payload); // Telegram закроет игру и передаст результат боту
+      tg.sendData(lastPayload); // Telegram закроет игру и передаст результат боту
     } catch (e) {
+      markDailySent(false);
       ui.btnSend.disabled = false;
+      ui.btnStart.disabled = false;
       ui.sendNote.textContent = SEND_HINT;
+      if (state === 'menu') ui.bestStart.textContent = SEND_HINT;
       return;
     }
     ui.sendNote.textContent = 'Отправляю…';
     // Если игра открыта не кнопкой из чата, Telegram её не закроет — подскажем, что делать
-    setTimeout(() => { ui.btnSend.disabled = false; ui.sendNote.textContent = SEND_HINT; }, 1500);
+    clearTimeout(sendTimer);
+    sendTimer = setTimeout(() => {
+      markDailySent(false);
+      ui.btnSend.disabled = false;
+      ui.btnStart.disabled = false;
+      ui.sendNote.textContent = SEND_HINT;
+      if (state === 'menu') ui.bestStart.textContent = SEND_HINT;
+    }, 1500);
+  }
+
+  function showStart() {
+    hideScreens();
+    state = 'menu';
+    closingGuard(false);
+    renderStart();
+    ui.start.hidden = false;
+    try { ui.btnSkins.focus({ preventScroll: true }); } catch (e) {}
+  }
+
+  /* ================= Вентили ================= */
+  function countUnlocked() { let n = 0; for (let i = 0; i < SKINS.length; i++) if (isUnlocked(i)) n++; return n; }
+
+  function starPath(g, r1, r2) {
+    g.beginPath();
+    for (let k = 0; k < 10; k++) {
+      const r = k % 2 ? r2 : r1, a = -Math.PI / 2 + (k * Math.PI) / 5;
+      if (k) g.lineTo(Math.cos(a) * r, Math.sin(a) * r); else g.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+    }
+    g.closePath();
+  }
+
+  // Штурвал крана в выбранном оформлении; (0, 0) — центр, wr — радиус
+  function drawWheel(g, wr, skin, now) {
+    const ringW = Math.max(3, wr * 0.32), spokeW = Math.max(2, wr * 0.17);
+    if (skin.fx === 'glow' || skin.fx === 'ember') {
+      const c = skin.fx === 'glow' ? '214, 21, 44' : '255, 140, 30';
+      const pulse = reduceMotion ? 0.5 : 0.5 + 0.5 * Math.sin(now * 3);
+      const rg = g.createRadialGradient(0, 0, wr * 0.2, 0, 0, wr * 1.9);
+      rg.addColorStop(0, `rgba(${c}, ${0.3 + pulse * 0.25})`); rg.addColorStop(1, `rgba(${c}, 0)`);
+      g.fillStyle = rg; g.beginPath(); g.arc(0, 0, wr * 1.9, 0, Math.PI * 2); g.fill();
+    }
+    if (skin.fill) { g.fillStyle = skin.fill; g.beginPath(); g.arc(0, 0, wr, 0, Math.PI * 2); g.fill(); }
+    g.strokeStyle = skin.spoke; g.lineCap = 'round'; g.lineWidth = spokeW;
+    for (let k = 0; k < 3; k++) {
+      const a = (k * Math.PI) / 3;
+      g.beginPath(); g.moveTo(Math.cos(a) * wr, Math.sin(a) * wr); g.lineTo(-Math.cos(a) * wr, -Math.sin(a) * wr); g.stroke();
+    }
+    g.lineWidth = ringW; g.lineCap = 'butt';
+    if (skin.fx === 'stripes') {
+      for (let k = 0; k < 8; k++) {
+        g.strokeStyle = k % 2 ? C.white : C.red;
+        g.beginPath(); g.arc(0, 0, wr, (k * Math.PI) / 4, ((k + 1) * Math.PI) / 4); g.stroke();
+      }
+    } else {
+      let stroke = skin.ring;
+      if (skin.grad) {
+        const lg = g.createLinearGradient(-wr, -wr, wr, wr);
+        skin.grad.forEach((col, i) => lg.addColorStop(i / (skin.grad.length - 1), col));
+        stroke = lg;
+      }
+      g.strokeStyle = stroke; g.beginPath(); g.arc(0, 0, wr, 0, Math.PI * 2); g.stroke();
+    }
+    if (skin.fx === 'rivets') {
+      g.fillStyle = skin.hub;
+      for (let k = 0; k < 6; k++) {
+        const a = Math.PI / 6 + (k * Math.PI) / 3;
+        g.beginPath(); g.arc(Math.cos(a) * wr, Math.sin(a) * wr, Math.max(1, ringW * 0.2), 0, Math.PI * 2); g.fill();
+      }
+    }
+    g.fillStyle = skin.hub;
+    if (skin.fx === 'star') { starPath(g, wr * 0.46, wr * 0.2); g.fill(); }
+    else { g.beginPath(); g.arc(0, 0, wr * 0.28, 0, Math.PI * 2); g.fill(); }
+  }
+
+  function renderSkins() {
+    ui.skinsGrid.innerHTML = '';
+    SKINS.forEach((skin, i) => {
+      const open = isUnlocked(i);
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'skin' + (open ? '' : ' locked') + (i === skinIndex ? ' on' : '');
+      b.setAttribute('aria-pressed', String(i === skinIndex));
+      if (!open) b.setAttribute('aria-disabled', 'true');
+      const cv = document.createElement('canvas');
+      const px = Math.round(64 * Math.min(window.devicePixelRatio || 1, 2.5));
+      cv.width = px; cv.height = px;
+      const g = cv.getContext('2d');
+      g.setTransform(px / 64, 0, 0, px / 64, px / 2, px / 2); // сдвиг задаётся в пикселях экрана
+      drawWheel(g, 21, skin, 0);
+      const name = document.createElement('b');
+      name.textContent = (i === skinIndex ? '✓ ' : open ? '' : '🔒 ') + skin.name;
+      const hint = document.createElement('span');
+      hint.textContent = open ? (i === skinIndex ? 'Выбран' : 'Открыт — жми, чтобы выбрать') : skin.hint;
+      b.append(cv, name, hint);
+      b.addEventListener('click', () => {
+        if (!isUnlocked(i)) { haptic('warning'); return; }
+        skinIndex = i;
+        store.set('gaz_skin', String(i));
+        haptic('light');
+        renderSkins();
+        try { ui.skinsGrid.children[i].focus({ preventScroll: true }); } catch (e) {}
+      });
+      ui.skinsGrid.appendChild(b);
+    });
+  }
+  function showSkins() {
+    renderSkins();
+    ui.start.hidden = true;
+    ui.skins.hidden = false;
+    try { ui.skinsGrid.children[skinIndex].focus({ preventScroll: true }); } catch (e) {}
   }
 
   /* ================= Рисование ================= */
@@ -702,13 +1127,14 @@
     ctx.fillStyle = g;
     ctx.fillRect(xs, top, xe - xs, h);
     ctx.fillStyle = 'rgba(255, 255, 255, 0.22)'; // бегущие блики
-    const gap = r * 2.6, off = (now * 140) % gap;
+    const t = reduceMotion ? 0 : now; // при «меньше движения» блики и монеты стоят на месте
+    const gap = r * 2.6, off = (t * 140) % gap;
     for (let x = xs - gap + off; x < xe; x += gap) {
       ctx.beginPath();
       ctx.moveTo(x, top + h); ctx.lineTo(x + h * 0.6, top); ctx.lineTo(x + h * 0.6 + r * 0.5, top); ctx.lineTo(x + r * 0.5, top + h);
       ctx.closePath(); ctx.fill();
     }
-    const cr = h * 0.36, step = r * 3.4, coff = (now * 110) % step; // монеты
+    const cr = h * 0.36, step = r * 3.4, coff = (t * 110) % step; // монеты
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.font = `700 ${Math.round(cr * 1.35)}px ${TEXT}`;
     for (let x = xs + coff + cr; x < xe - cr; x += step) {
@@ -728,7 +1154,7 @@
     ctx.fillStyle = '#5b6573';
     ctx.fillRect(x - 2.5, cy, 5, y - r * 1.25 - cy);
     if (f) { // кран краснеет, когда поток подбирается к нему
-      const pulse = 0.5 + 0.5 * Math.sin(now * (6 + f.p * 16));
+      const pulse = reduceMotion ? 0.5 : 0.5 + 0.5 * Math.sin(now * (6 + f.p * 16));
       const a = clamp(0.15 + f.p * 0.55 + pulse * 0.15, 0, 0.9);
       const rg = ctx.createRadialGradient(x, cy, wr * 0.3, x, cy, wr * 2.2);
       rg.addColorStop(0, `rgba(214, 21, 44, ${a})`); rg.addColorStop(1, 'rgba(214, 21, 44, 0)');
@@ -738,16 +1164,7 @@
     ctx.save();
     ctx.translate(x, cy);
     ctx.rotate(valveAngle[i]);
-    ctx.strokeStyle = C.white; ctx.lineCap = 'round';
-    ctx.lineWidth = Math.max(2, wr * 0.17);
-    for (let k = 0; k < 3; k++) {
-      const a = (k * Math.PI) / 3;
-      ctx.beginPath(); ctx.moveTo(Math.cos(a) * wr, Math.sin(a) * wr); ctx.lineTo(-Math.cos(a) * wr, -Math.sin(a) * wr); ctx.stroke();
-    }
-    ctx.strokeStyle = C.red; ctx.lineWidth = Math.max(3, wr * 0.32);
-    ctx.beginPath(); ctx.arc(0, 0, wr, 0, Math.PI * 2); ctx.stroke();
-    ctx.fillStyle = C.white;
-    ctx.beginPath(); ctx.arc(0, 0, wr * 0.28, 0, Math.PI * 2); ctx.fill();
+    drawWheel(ctx, wr, SKINS[skinIndex], now);
     ctx.restore();
   }
 
@@ -849,18 +1266,31 @@
   });
   document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); });
   if (tg && tgAtLeast('8.0')) { try { tg.onEvent('deactivated', pauseGame); } catch (e) {} }
-  $('btn-start').addEventListener('click', startGame);
-  $('btn-again').addEventListener('click', startGame);
+  ui.btnStart.addEventListener('click', onStartButton);
+  ui.modeWeek.addEventListener('click', () => setMode('week'));
+  ui.modeDaily.addEventListener('click', () => setMode('daily'));
+  ui.btnSkins.addEventListener('click', showSkins);
+  $('btn-skins-done').addEventListener('click', showStart);
+  ui.btnAgain.addEventListener('click', () => {
+    if (mode === 'daily') setMode('week');
+    startGame();
+  });
   $('btn-resume').addEventListener('click', resumeGame);
   ui.btnSend.addEventListener('click', sendResult);
 
   /* ================= Старт ================= */
+  $('pause-lead').textContent = PAUSE_LEAD;
+  // Новичкам правила сразу открыты — если экран высокий и кнопка «Играть» всё равно видна
+  if (!store.get('gaz_played') && window.innerHeight >= 640) ui.rulesBox.open = true;
   resetGame();
   resize();
   if (window.ResizeObserver) new ResizeObserver(() => resize()).observe(field);
   else window.addEventListener('resize', resize);
   if (tg) { try { tg.onEvent('viewportChanged', () => resize()); } catch (e) {} }
-  ui.bestStart.textContent = best > 0 ? `Личный рекорд: ${best}` : '';
+  const pending = dailyState();
+  if (pending && pending.payload && !pending.sent) mode = 'daily'; // напомним записать газ дня
+  setMode(mode);
+  loadCloudDaily();
   if (document.fonts && document.fonts.load) document.fonts.load('700 20px "Oswald"').catch(() => {});
   requestAnimationFrame(frame);
 })();
