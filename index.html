@@ -1,0 +1,869 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#151b23">
+<title>Перекрой газ!</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    --sky-deep: #1b222c;
+    --hud: #151b23;
+    --red: #d6152c;
+    --red-deep: #9c0f1f;
+    --white: #ffffff;
+    --pipe: #f0b81c;
+    --gas-deep: #1d5fb8;
+    --muted: #a7b1c0;
+    --display: "Oswald", "Arial Narrow", "Roboto Condensed", "sans-serif-condensed", Impact, sans-serif;
+    --text: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  [hidden] { display: none !important; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    background: var(--sky-deep); color: var(--white); font-family: var(--text);
+    -webkit-user-select: none; user-select: none; overscroll-behavior: none; -webkit-text-size-adjust: 100%;
+  }
+  #app { position: fixed; inset: 0; display: flex; flex-direction: column; }
+
+  /* Табло */
+  .hud {
+    position: relative; z-index: 2;
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: end;
+    padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+    background: var(--hud);
+  }
+  .hud::after { /* красно-белая полоса, как на шарфе */
+    content: ""; position: absolute; left: 0; right: 0; bottom: -6px; height: 6px;
+    background: linear-gradient(var(--red) 0 50%, var(--white) 50% 100%);
+  }
+  .hud-score { display: flex; align-items: baseline; gap: 6px; }
+  .num { font-family: var(--display); font-weight: 600; font-size: 34px; line-height: 1; font-variant-numeric: tabular-nums; }
+  .unit { font-size: 13px; color: var(--muted); }
+  .combo { min-height: 17px; margin-top: 3px; font-size: 13px; font-weight: 600; color: var(--pipe); white-space: nowrap; }
+  .hud-level { padding-bottom: 20px; text-align: center; font-size: 13px; color: var(--muted); }
+  .hud-level b { margin-left: 3px; font-family: var(--display); font-weight: 600; font-size: 22px; color: var(--white); }
+  .hud-lives { display: flex; justify-content: flex-end; gap: 6px; padding-bottom: 20px; }
+  .life { width: 24px; height: 24px; display: block; }
+
+  /* Поле */
+  .field { position: relative; flex: 1; min-height: 0; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+
+  /* Ленты поверх поля: синяя — пропущенный трансфер, красная — новый уровень */
+  .sash {
+    position: absolute; left: -12px; right: -12px; z-index: 3;
+    padding: 10px 28px; text-align: center; pointer-events: none;
+    opacity: 0; transform: rotate(-4deg) scale(.96);
+    transition: opacity .18s ease-out, transform .18s ease-out;
+    box-shadow: 0 8px 22px rgba(0, 0, 0, .35);
+  }
+  .sash.show { opacity: 1; transform: rotate(-4deg) scale(1); }
+  /* синяя лента ложится на табло, чтобы не закрывать трубы */
+  .sash.sash-blue {
+    top: calc(8px + env(safe-area-inset-top)); z-index: 4; padding: 9px 28px;
+    background: var(--gas-deep); font-size: 15px; font-weight: 700; line-height: 1.3;
+    transform: rotate(-2deg) scale(.96);
+  }
+  .sash.sash-blue.show { transform: rotate(-2deg) scale(1); }
+  .sash-red { top: 36%; background: var(--red); }
+  .sash-red strong { display: block; font-family: var(--display); font-weight: 700; font-size: 38px; line-height: 1.05; text-transform: uppercase; }
+  .sash-red span { display: block; margin-top: 2px; font-size: 15px; font-weight: 600; }
+
+  /* Плакаты: старт, итоги, пауза */
+  .screen {
+    position: absolute; inset: 0; z-index: 5;
+    display: flex; align-items: center; justify-content: center;
+    padding: calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom));
+    background: rgba(17, 22, 30, .62);
+    -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+  }
+  .poster {
+    position: relative; width: 100%; max-width: 380px; max-height: 100%;
+    overflow-x: hidden; overflow-y: auto;
+    padding: 28px 22px 22px; border-radius: 4px;
+    background: var(--red); color: var(--white);
+    box-shadow: 0 26px 60px rgba(0, 0, 0, .5);
+    -webkit-user-select: text; user-select: text;
+  }
+  .poster > * { position: relative; }
+  .poster > .poster-wheel {
+    position: absolute; right: -58px; top: -58px; width: 190px; height: 190px;
+    color: rgba(255, 255, 255, .16); transform: rotate(12deg); pointer-events: none;
+  }
+  .title {
+    margin: 4px 0 24px; font-family: var(--display); font-weight: 700; text-transform: uppercase;
+    line-height: .9; transform: rotate(-6deg); transform-origin: left center;
+  }
+  .title .l1 { display: block; font-size: clamp(44px, 15vw, 58px); }
+  .title .l2 {
+    display: block; margin: 8px -40px 0; padding: 4px 40px 8px;
+    background: var(--white); color: var(--red); font-size: clamp(60px, 21vw, 82px);
+  }
+  .lead { margin: 0 0 14px; font-size: 15px; line-height: 1.45; }
+  .rules { margin: 0 0 20px; padding: 0; list-style: none; font-size: 14px; line-height: 1.4; }
+  .rules li { padding: 7px 0; border-top: 1px solid rgba(255, 255, 255, .3); }
+  .rules li:last-child { border-bottom: 1px solid rgba(255, 255, 255, .3); }
+
+  .btn {
+    display: block; width: 100%; min-height: 52px; padding: 10px 16px;
+    border: 0; border-radius: 4px; cursor: pointer;
+    font-family: var(--display); font-weight: 600; font-size: 21px; letter-spacing: .02em;
+  }
+  .btn-main { background: var(--white); color: var(--red); box-shadow: 0 4px 0 var(--red-deep); }
+  .btn-main:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--red-deep); }
+  .btn-main:disabled { opacity: .6; cursor: default; }
+  .btn-line { margin-top: 12px; background: transparent; color: var(--white); border: 2px solid rgba(255, 255, 255, .8); font-size: 19px; }
+  .btn-line:active { background: rgba(255, 255, 255, .12); }
+  .btn:focus-visible { outline: 3px solid var(--pipe); outline-offset: 3px; }
+  .small { margin: 12px 0 0; font-size: 13px; line-height: 1.4; color: rgba(255, 255, 255, .92); text-align: center; }
+  .small:empty { display: none; }
+
+  .over-title { margin: 0; font-family: var(--display); font-weight: 700; font-size: 34px; line-height: 1; text-transform: uppercase; }
+  .final { display: flex; align-items: baseline; gap: 10px; margin: 12px 0 2px; }
+  .final .big { font-family: var(--display); font-weight: 700; font-size: 96px; line-height: .9; font-variant-numeric: tabular-nums; }
+  .final .unit { color: rgba(255, 255, 255, .92); font-size: 16px; }
+  .verdict { margin: 10px 0 16px; font-size: 16px; font-weight: 600; line-height: 1.4; }
+  .report { margin: 0 0 20px; }
+  .report div {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+    padding: 7px 0; border-top: 1px solid rgba(255, 255, 255, .3); font-size: 14px;
+  }
+  .report div:last-child { border-bottom: 1px solid rgba(255, 255, 255, .3); }
+  .report dd { margin: 0; font-family: var(--display); font-weight: 600; font-size: 19px; white-space: nowrap; }
+  .pause-lead { margin-top: 10px; }
+
+  /* Невысокие экраны (iPhone SE и похожие): ужимаем плакаты, чтобы кнопка была видна сразу */
+  @media (max-height: 700px) {
+    .poster { padding: 20px 18px 16px; }
+    .title { margin-bottom: 16px; }
+    .title .l1 { font-size: clamp(36px, 12vw, 48px); }
+    .title .l2 { margin-top: 6px; padding: 2px 40px 6px; font-size: clamp(48px, 16vw, 64px); }
+    .lead { margin-bottom: 10px; font-size: 14px; line-height: 1.4; }
+    .rules { margin-bottom: 14px; font-size: 13px; line-height: 1.35; }
+    .rules li { padding: 5px 0; }
+    .final .big { font-size: 72px; }
+    .verdict { margin: 8px 0 12px; font-size: 15px; }
+    .report { margin-bottom: 14px; }
+    .report div { padding: 5px 0; }
+    .sash.sash-blue { font-size: 14px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sash { transition: none; }
+    .btn-main:active { transform: none; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="hud">
+    <div>
+      <div class="hud-score"><span class="num" id="score">0</span><span class="unit" id="score-unit">очков</span></div>
+      <div class="combo" id="combo"></div>
+    </div>
+    <div class="hud-level">уровень <b id="level">1</b></div>
+    <div class="hud-lives" id="lives" role="img" aria-label="Осталось кранов: 3"></div>
+  </header>
+
+  <div class="sash sash-blue" id="toast" role="status" aria-live="polite"></div>
+
+  <main class="field" id="field">
+    <canvas id="game" aria-label="Игровое поле: пять газовых труб. Тапни по трубе, чтобы перекрыть поток."></canvas>
+    <div class="sash sash-red" id="banner" aria-hidden="true"><strong id="banner-title"></strong><span id="banner-text"></span></div>
+  </main>
+
+  <section class="screen" id="screen-start" aria-labelledby="start-title">
+    <div class="poster">
+      <svg class="poster-wheel" viewBox="0 0 100 100" aria-hidden="true"><path d="M50 10V90M15.36 30L84.64 70M15.36 70L84.64 30" stroke="currentColor" stroke-width="7" stroke-linecap="round"/><circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" stroke-width="9"/><circle cx="50" cy="50" r="11" fill="currentColor"/></svg>
+      <h1 class="title" id="start-title"><span class="l1">Перекрой</span><span class="l2">газ!</span></h1>
+      <p class="lead">Газовые деньги текут по трубам прямо в кассу Зенита. Перекрывай краны, пока там не купили ещё одного легионера.</p>
+      <ul class="rules">
+        <li><b>Тапни по трубе</b> — кран закроется. Успел рано — бонус.</li>
+        <li><b>Золотой поток</b> — трансфер звезды, втрое больше очков.</li>
+        <li><b>Серия без промахов</b> удваивает, а потом утраивает очки.</li>
+        <li><b>Три пропущенных трансфера</b> — и газ прорвался.</li>
+      </ul>
+      <button class="btn btn-main" id="btn-start" type="button">Играть</button>
+      <p class="small" id="best-start"></p>
+    </div>
+  </section>
+
+  <section class="screen" id="screen-over" aria-labelledby="over-title" hidden>
+    <div class="poster">
+      <svg class="poster-wheel" viewBox="0 0 100 100" aria-hidden="true"><path d="M50 10V90M15.36 30L84.64 70M15.36 70L84.64 30" stroke="currentColor" stroke-width="7" stroke-linecap="round"/><circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" stroke-width="9"/><circle cx="50" cy="50" r="11" fill="currentColor"/></svg>
+      <h2 class="over-title" id="over-title">Газ прорвался!</h2>
+      <div class="final"><span class="big" id="final-score">0</span><span class="unit" id="final-unit">очков</span></div>
+      <p class="verdict" id="verdict"></p>
+      <dl class="report">
+        <div><dt>Перекрыто кранов</dt><dd id="st-closed">0</dd></div>
+        <div><dt>Не дошло до кассы</dt><dd id="st-saved">0</dd></div>
+        <div><dt>Лучшая серия</dt><dd id="st-combo">0</dd></div>
+      </dl>
+      <button class="btn btn-main" id="btn-send" type="button">Записать в топ</button>
+      <button class="btn btn-line" id="btn-again" type="button">Сыграть ещё раз</button>
+      <p class="small" id="send-note" role="status"></p>
+      <p class="small" id="best-over"></p>
+    </div>
+  </section>
+
+  <section class="screen" id="screen-pause" aria-labelledby="pause-title" hidden>
+    <div class="poster">
+      <h2 class="over-title" id="pause-title">Пауза</h2>
+      <p class="lead pause-lead">Газ подождёт. Зенит — тоже.</p>
+      <button class="btn btn-main" id="btn-resume" type="button">Продолжить</button>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  /* ================= Тексты игры — меняй как хочешь ================= */
+  const MISS_LINES = [
+    'Трансфер прошёл! Ещё один вингер едет в Питер',
+    'Минус бюджет, плюс легионер',
+    'Купили защитника. Будет греть скамейку',
+    'Новый легионер! Пока не выучил слово «поребрик»',
+    'Ещё 50 миллионов улетели в Бразилию',
+    'Подписали «проект на будущее»',
+    'Новичок уже в шоке от питерской погоды',
+  ];
+  const STAR_MISS_LINES = [
+    'Звёздный трансфер! 100 миллионов — и сразу на скамейку',
+    'Купили звезду. Пресс-релиз длиннее его сезона',
+  ];
+  const LEVEL_LINES = {
+    2: 'Трансферное окно открылось',
+    3: 'Пошли звёздные трансферы',
+    4: 'В Питере начался дождь',
+    5: 'Газ идёт под давлением',
+    6: 'Крыша стадиона опять протекает',
+    7: 'Бюджет бездонный',
+    8: 'Ливень. Обычный питерский вторник',
+  };
+  const LEVEL_LINE_DEFAULT = 'Газ не кончается — держись';
+  const VERDICTS = [ // [от скольки очков, текст]
+    [0, 'Газ хлещет рекой, а Зенит скупает пол-лиги. Соберись!'],
+    [60, 'Разминка засчитана. Но пара легионеров всё-таки проскочила.'],
+    [180, 'Хорош! Трансферный бюджет Зенита заметно похудел.'],
+    [300, 'Мощно! В Питере уже экономят на шаверме.'],
+    [450, 'Легенда! Штурвал можно вешать на стену как трофей.'],
+  ];
+
+  /* ================= Сложность ================= */
+  const ROWS = 5;                 // труб на поле
+  const LIVES = 3;                // сколько трансферов можно пропустить
+  const CLOSES_PER_LEVEL = 8;     // перекрытых кранов до следующего уровня
+  const FAST_ZONE = 0.35;         // перекрыл раньше этой доли трубы — бонусное очко
+  const spawnInterval = (lvl) => Math.max(0.22, 1.15 * Math.pow(0.9, lvl - 1)); // сек между потоками
+  const travelTime = (lvl) => Math.max(0.75, 3.2 * Math.pow(0.9, lvl - 1));     // сек, за которые поток доходит до крана
+  const starChance = (lvl) => (lvl >= 3 ? 0.12 : 0);
+  const comboMult = (c) => (c >= 25 ? 3 : c >= 10 ? 2 : 1);
+
+  /* ================= Цвета и шрифты поля ================= */
+  const C = {
+    skyTop: '#34404f', skyBottom: '#1b222c',
+    pipe: '#f0b81c', pipeLight: '#ffd862', pipeDark: '#a87d08', pipeJoint: '#c9960f', channel: '#1c1a14',
+    red: '#d6152c', white: '#ffffff',
+    gasLight: '#8fd0ff', gas: '#2f8fe8', gasDeep: '#1d5fb8',
+    gold: '#ffd34d', goldDeep: '#d99a00',
+    safe: '#1d3f73', safeDeep: '#132b50',
+  };
+  const DISPLAY = '"Oswald", "Arial Narrow", "Roboto Condensed", "sans-serif-condensed", Impact, sans-serif';
+  const TEXT = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
+  const DRAIN_TIME = 0.28;
+  const MAX_DROPS = 160;
+
+  /* ================= Telegram ================= */
+  const tg = (window.Telegram && window.Telegram.WebApp) || null;
+  const inTelegram = !!(tg && tg.platform && tg.platform !== 'unknown');
+  const tgAtLeast = (v) => { try { return !!(tg && tg.isVersionAtLeast(v)); } catch (e) { return false; } };
+  if (tg) {
+    try { tg.ready(); } catch (e) {}
+    try { tg.expand(); } catch (e) {}
+    if (tgAtLeast('6.9')) { try { tg.setHeaderColor('#151b23'); } catch (e) {} }
+    if (tgAtLeast('6.1')) { try { tg.setBackgroundColor('#1b222c'); } catch (e) {} }
+    if (tgAtLeast('7.7')) { try { tg.disableVerticalSwipes(); } catch (e) {} }
+  }
+  function haptic(kind) {
+    if (!inTelegram || !tgAtLeast('6.1')) return;
+    try {
+      if (kind === 'light' || kind === 'medium' || kind === 'heavy') tg.HapticFeedback.impactOccurred(kind);
+      else tg.HapticFeedback.notificationOccurred(kind);
+    } catch (e) {}
+  }
+
+  const store = {
+    get(key) { try { return window.localStorage.getItem(key); } catch (e) { return null; } },
+    set(key, value) { try { window.localStorage.setItem(key, value); } catch (e) {} },
+  };
+
+  /* ================= Помощники ================= */
+  const $ = (id) => document.getElementById(id);
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+  function plural(n, one, few, many) {
+    const a = Math.abs(n) % 100, b = a % 10;
+    if (a > 10 && a < 20) return many;
+    if (b === 1) return one;
+    if (b >= 2 && b <= 4) return few;
+    return many;
+  }
+  const pointsWord = (n) => plural(n, 'очко', 'очка', 'очков');
+  function tier(list, value) { let text = list[0][1]; for (const [min, t] of list) if (value >= min) text = t; return text; }
+  const fmt = (n) => Math.round(n).toLocaleString('ru-RU');
+
+  const field = $('field');
+  const canvas = $('game');
+  const ctx = canvas.getContext('2d');
+  const ui = {
+    score: $('score'), scoreUnit: $('score-unit'), level: $('level'), lives: $('lives'), combo: $('combo'),
+    toast: $('toast'), banner: $('banner'), bannerTitle: $('banner-title'), bannerText: $('banner-text'),
+    start: $('screen-start'), over: $('screen-over'), pause: $('screen-pause'),
+    finalScore: $('final-score'), finalUnit: $('final-unit'), verdict: $('verdict'),
+    stClosed: $('st-closed'), stSaved: $('st-saved'), stCombo: $('st-combo'),
+    bestStart: $('best-start'), bestOver: $('best-over'), sendNote: $('send-note'), btnSend: $('btn-send'),
+  };
+
+  /* ================= Состояние ================= */
+  const reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  let state = 'menu'; // menu | playing | paused | over
+  let score = 0, lives = LIVES, level = 1, closed = 0, combo = 0, bestCombo = 0, saved = 0, playTime = 0, spawnTimer = 0;
+  let freezeTimer = 0; // короткая передышка, пока висит лента нового уровня
+  let flows = [], drains = [], valveAngle = [], valveSpin = [], slotFlash = [], particles = [], floaters = [], shake = 0;
+  let W = 0, H = 0, L = null, drops = [];
+  let best = parseInt(store.get('gaz_best') || '0', 10) || 0;
+  let lastFrame = 0, toastTimer = 0, bannerTimer = 0;
+
+  function resetGame() {
+    score = 0; lives = LIVES; level = 1; closed = 0; combo = 0; bestCombo = 0; saved = 0; playTime = 0;
+    spawnTimer = 0.6; freezeTimer = 0;
+    flows = new Array(ROWS).fill(null);
+    drains = []; particles = []; floaters = [];
+    valveAngle = new Array(ROWS).fill(0); valveSpin = new Array(ROWS).fill(0); slotFlash = new Array(ROWS).fill(0);
+    shake = 0;
+    renderHud();
+  }
+
+  /* ================= Табло ================= */
+  function valveIcon(on) { // маленький красный кран на жёлтой трубе; потерянный — серый
+    const ring = on ? C.red : '#4a5361', spoke = on ? C.white : '#4a5361', pipe = on ? C.pipe : '#3a424e';
+    return '<svg class="life" viewBox="0 0 24 24" aria-hidden="true">' +
+      `<rect x="2" y="19" width="20" height="4" rx="1.5" fill="${pipe}"/>` +
+      `<rect x="11" y="15" width="2" height="4.5" fill="${on ? '#5b6573' : '#3a424e'}"/>` +
+      `<path d="M12 3.2V14.8M6.97 6.1L17.03 11.9M6.97 11.9L17.03 6.1" stroke="${spoke}" stroke-width="1.8" stroke-linecap="round"/>` +
+      `<circle cx="12" cy="9" r="5.8" fill="none" stroke="${ring}" stroke-width="2.6"/>` +
+      `<circle cx="12" cy="9" r="1.8" fill="${spoke}"/></svg>`;
+  }
+  function renderHud() {
+    ui.score.textContent = score;
+    ui.scoreUnit.textContent = pointsWord(score);
+    ui.level.textContent = level;
+    let html = '';
+    for (let i = 0; i < LIVES; i++) html += valveIcon(i < lives);
+    ui.lives.innerHTML = html;
+    ui.lives.setAttribute('aria-label', 'Осталось кранов: ' + lives);
+    const m = comboMult(combo);
+    ui.combo.textContent = combo >= 3 ? `серия ${combo}` + (m > 1 ? `, очки ×${m}` : '') : '';
+  }
+  function showToast(text) {
+    ui.toast.textContent = text;
+    ui.toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => ui.toast.classList.remove('show'), 1900);
+  }
+  function showBanner(title, text, secs) {
+    ui.bannerTitle.textContent = title;
+    ui.bannerText.textContent = text;
+    ui.banner.classList.add('show');
+    clearTimeout(bannerTimer);
+    bannerTimer = setTimeout(() => ui.banner.classList.remove('show'), secs * 1000);
+  }
+
+  /* ================= Размеры поля ================= */
+  function resize() {
+    const rect = field.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    W = Math.max(1, Math.round(rect.width));
+    H = Math.max(1, Math.round(rect.height));
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const padTop = 14, padBottom = 14, side = 8;
+    const rowH = (H - padTop - padBottom) / ROWS;
+    const r = clamp(rowH * 0.16, 7, 15);             // радиус трубы
+    const riserW = clamp(W * 0.085, 26, 40);         // стояк слева
+    const safeW = clamp(W * 0.15, 48, 74);           // касса справа
+    const xEnd = W - side - safeW + 6;
+    const valveX = xEnd - r * 2.2 - 10;
+    const rowsY = [];
+    for (let i = 0; i < ROWS; i++) rowsY.push(padTop + rowH * (i + 0.5) + r * 1.35);
+    L = { padTop, padBottom, side, rowH, r, riserW, safeW, xEnd, valveX, rowsY,
+          x0: side + riserW * 0.5, flowStart: side + riserW + 6, wheelR: r * 1.1 };
+    makeRain();
+  }
+  const wheelY = (i) => L.rowsY[i] - L.r * 1.55 - L.wheelR;
+  const flowX = (p) => L.flowStart + p * (L.valveX - L.flowStart);
+
+  /* ================= Дождь (Питер же) ================= */
+  function newDrop(anyY) {
+    return { x: Math.random() * (W + 80), y: anyY ? Math.random() * H : -Math.random() * 80 - 10,
+             len: 9 + Math.random() * 14, v: 420 + Math.random() * 280 };
+  }
+  function makeRain() { drops = []; for (let i = 0; i < MAX_DROPS; i++) drops.push(newDrop(true)); }
+  const rainCount = () => Math.min(MAX_DROPS, 24 + level * 16);
+
+  /* ================= Игровая логика ================= */
+  function spawnFlow() {
+    const free = [];
+    for (let i = 0; i < ROWS; i++) if (!flows[i]) free.push(i);
+    if (!free.length) return;
+    const row = pick(free);
+    const star = Math.random() < starChance(level);
+    const speed = (star ? 1.45 : 1) * (0.9 + Math.random() * 0.2) / travelTime(level);
+    flows[row] = { p: 0, speed, star, money: star ? 80 + Math.round(Math.random() * 70) : 15 + Math.round(Math.random() * 35) };
+  }
+
+  function update(dt) {
+    playTime += dt;
+    if (freezeTimer > 0) { freezeTimer -= dt; return; }
+    spawnTimer -= dt;
+    if (spawnTimer <= 0) {
+      spawnFlow();
+      spawnTimer = spawnInterval(level) * (0.75 + Math.random() * 0.5);
+    }
+    for (let i = 0; i < ROWS; i++) {
+      const f = flows[i];
+      if (!f) continue;
+      f.p += f.speed * dt;
+      if (f.p >= 1) {
+        flows[i] = null;
+        onMiss(i, f);
+        if (state !== 'playing') return;
+      }
+    }
+  }
+
+  function tap(row) {
+    if (state !== 'playing' || !L || freezeTimer > 0) return;
+    const f = flows[row];
+    const vx = L.valveX, vy = wheelY(row);
+    if (!f) {
+      if (combo > 0) floatText(vx, vy, 'мимо', '#c3cad6', 15);
+      combo = 0;
+      renderHud();
+      return;
+    }
+    flows[row] = null;
+    drains.push({ row, p: f.p, star: f.star, t: 0 });
+    combo += 1;
+    bestCombo = Math.max(bestCombo, combo);
+    const mult = comboMult(combo);
+    const fast = f.p < FAST_ZONE;
+    const pts = ((f.star ? 3 : 1) + (fast ? 1 : 0)) * mult;
+    score += pts; closed += 1; saved += f.money;
+    valveSpin[row] = 28;
+    burst(vx, vy, [C.red, C.white, C.red], 14, 230);
+    floatText(vx, vy - 4, '+' + pts, f.star ? C.gold : C.white, 22);
+    if (fast) floatText(flowX(f.p * 0.5) + 14, L.rowsY[row] - L.r * 1.9, 'быстро!', C.gasLight, 14);
+    haptic('light');
+    if (combo === 10 || combo === 25) floatText(vx - 46, vy + 2, `×${mult}!`, C.gold, 30);
+    const newLevel = 1 + Math.floor(closed / CLOSES_PER_LEVEL);
+    if (newLevel > level) {
+      level = newLevel;
+      showBanner(`Уровень ${level}`, LEVEL_LINES[level] || LEVEL_LINE_DEFAULT, 1.3);
+      freezeTimer = 1.3;
+      haptic('success');
+    }
+    renderHud();
+  }
+
+  function onMiss(row, f) {
+    lives -= 1; combo = 0;
+    slotFlash[row] = 1;
+    const kx = W - L.side - L.safeW / 2, ky = L.rowsY[row];
+    burst(kx, ky, [C.gasLight, C.gas, C.gold], 18, 260);
+    floatText(kx, ky - L.r * 1.8, '💸', C.white, 28, true);
+    if (!reduceMotion) shake = 0.35;
+    showToast(pick(f.star ? STAR_MISS_LINES : MISS_LINES));
+    haptic('error');
+    renderHud();
+    if (lives <= 0) gameOver();
+  }
+
+  function burst(x, y, colors, n, speed) {
+    for (let k = 0; k < n; k++) {
+      const a = Math.random() * Math.PI * 2, v = speed * (0.35 + Math.random() * 0.8);
+      particles.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - speed * 0.35, t: 0,
+                       life: 0.45 + Math.random() * 0.35, color: colors[k % colors.length], size: 2.5 + Math.random() * 3.5 });
+    }
+  }
+  function floatText(x, y, text, color, size, plain) {
+    floaters.push({ x, y, text, color, size, plain: !!plain, t: 0, life: 0.85 });
+  }
+
+  function updateAmbient(dt) {
+    if (!reduceMotion) {
+      for (const d of drops) {
+        d.y += d.v * dt; d.x -= d.v * 0.25 * dt;
+        if (d.y > H + 20 || d.x < -40) Object.assign(d, newDrop(false));
+      }
+    }
+    for (let i = 0; i < ROWS; i++) {
+      if (valveSpin[i] > 0) { valveAngle[i] += valveSpin[i] * dt; valveSpin[i] = Math.max(0, valveSpin[i] - 45 * dt); }
+      if (slotFlash[i] > 0) slotFlash[i] = Math.max(0, slotFlash[i] - dt * 2);
+    }
+    for (const d of drains) d.t += dt;
+    drains = drains.filter((d) => d.t < DRAIN_TIME);
+    for (const p of particles) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 700 * dt; }
+    particles = particles.filter((p) => p.t < p.life);
+    for (const f of floaters) f.t += dt;
+    floaters = floaters.filter((f) => f.t < f.life);
+    if (shake > 0) shake = Math.max(0, shake - dt);
+  }
+
+  /* ================= Экраны ================= */
+  function startGame() {
+    resetGame();
+    ui.start.hidden = true; ui.over.hidden = true; ui.pause.hidden = true;
+    ui.toast.classList.remove('show');
+    state = 'playing';
+    showBanner('Уровень 1', 'Перекрывай краны, пока Зенит не скупил лигу', 1.3);
+    freezeTimer = 1.3;
+    haptic('light');
+  }
+  function pauseGame() {
+    if (state !== 'playing') return;
+    state = 'paused';
+    ui.pause.hidden = false;
+  }
+  function resumeGame() {
+    if (state !== 'paused') return;
+    ui.pause.hidden = true;
+    state = 'playing';
+  }
+  function gameOver() {
+    state = 'over';
+    const record = score > best;
+    if (record) { best = score; store.set('gaz_best', String(best)); }
+    ui.finalScore.textContent = score;
+    ui.finalUnit.textContent = pointsWord(score);
+    ui.verdict.textContent = tier(VERDICTS, score);
+    ui.stClosed.textContent = closed;
+    ui.stSaved.textContent = fmt(saved) + ' млн ₽';
+    ui.stCombo.textContent = bestCombo;
+    ui.bestOver.textContent = record && score > 0 ? 'Новый личный рекорд!' : `Личный рекорд: ${best}`;
+    ui.bestStart.textContent = `Личный рекорд: ${best}`;
+    ui.sendNote.textContent = '';
+    ui.btnSend.disabled = false;
+    if (!inTelegram) {
+      ui.btnSend.hidden = true;
+      ui.sendNote.textContent = 'Чтобы попасть в топ, открой игру через бота кнопкой «🎮 Играть».';
+    } else if (score === 0) {
+      ui.btnSend.hidden = true;
+      ui.sendNote.textContent = 'С нулём в топ не берут. Попробуй ещё раз!';
+    } else {
+      ui.btnSend.hidden = false;
+    }
+    setTimeout(() => { if (state === 'over') ui.over.hidden = false; }, 500);
+  }
+
+  const SEND_HINT = 'Не получилось отправить. Открой игру кнопкой «🎮 Играть» под полем ввода в чате с ботом — тогда результат попадёт в топ.';
+  function sendResult() {
+    if (!tg) return;
+    const payload = JSON.stringify({
+      v: 1, game: 'gaz', score, level, closed, best_combo: bestCombo,
+      duration: Math.round(playTime * 10) / 10,
+    });
+    ui.btnSend.disabled = true;
+    try {
+      tg.sendData(payload); // Telegram закроет игру и передаст результат боту
+    } catch (e) {
+      ui.btnSend.disabled = false;
+      ui.sendNote.textContent = SEND_HINT;
+      return;
+    }
+    ui.sendNote.textContent = 'Отправляю…';
+    // Если игра открыта не кнопкой из чата, Telegram её не закроет — подскажем, что делать
+    setTimeout(() => { ui.btnSend.disabled = false; ui.sendNote.textContent = SEND_HINT; }, 1500);
+  }
+
+  /* ================= Рисование ================= */
+  function roundRect(x, y, w, h, r) {
+    const rr = Math.max(0, Math.min(r, w / 2, h / 2));
+    ctx.beginPath();
+    ctx.moveTo(x + rr, y);
+    ctx.arcTo(x + w, y, x + w, y + h, rr);
+    ctx.arcTo(x + w, y + h, x, y + h, rr);
+    ctx.arcTo(x, y + h, x, y, rr);
+    ctx.arcTo(x, y, x + w, y, rr);
+    ctx.closePath();
+  }
+
+  function drawSky() {
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, C.skyTop); g.addColorStop(1, C.skyBottom);
+    ctx.fillStyle = g;
+    ctx.fillRect(-20, -20, W + 40, H + 40);
+    for (let i = 0; i < ROWS; i++) {
+      const top = L.padTop + L.rowH * i;
+      const f = flows[i];
+      if (f) {
+        ctx.fillStyle = `rgba(47, 143, 232, ${0.05 + f.p * 0.12})`;
+        ctx.fillRect(0, top, W, L.rowH);
+      } else if (i % 2 === 1) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.025)';
+        ctx.fillRect(0, top, W, L.rowH);
+      }
+    }
+  }
+
+  function drawRain() {
+    const n = Math.min(drops.length, rainCount());
+    ctx.strokeStyle = 'rgba(205, 220, 240, 0.2)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = 0; i < n; i++) { const d = drops[i]; ctx.moveTo(d.x, d.y); ctx.lineTo(d.x - d.len * 0.25, d.y + d.len); }
+    ctx.stroke();
+  }
+
+  function drawRiser() {
+    const x = L.side, w = L.riserW;
+    const g = ctx.createLinearGradient(x, 0, x + w, 0);
+    g.addColorStop(0, C.pipeDark); g.addColorStop(0.35, C.pipeLight); g.addColorStop(0.6, C.pipe); g.addColorStop(1, C.pipeDark);
+    ctx.fillStyle = g;
+    ctx.fillRect(x, -20, w, H + 40); // стояк уходит за края поля
+    const gaps = [];
+    for (let i = 0; i < ROWS - 1; i++) gaps.push((L.rowsY[i] + L.rowsY[i + 1]) / 2);
+    gaps.forEach((gy, k) => {
+      if (k % 2 === 0) { // красные предупредительные кольца, как на настоящих газовых трубах
+        const ringH = Math.max(5, w * 0.22);
+        ctx.fillStyle = C.red;
+        ctx.fillRect(x, gy - ringH / 2, w, ringH);
+      } else {
+        ctx.save();
+        ctx.translate(x + w / 2, gy);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillStyle = 'rgba(16, 21, 29, 0.78)';
+        ctx.font = `700 ${Math.round(w * 0.6)}px ${DISPLAY}`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('ГАЗ', 0, 1);
+        ctx.restore();
+      }
+    });
+  }
+
+  function drawSafe() {
+    const x = W - L.side - L.safeW, w = L.safeW;
+    const top = L.padTop, h = H - L.padTop - L.padBottom;
+    const g = ctx.createLinearGradient(x, 0, x + w, 0);
+    g.addColorStop(0, C.safe); g.addColorStop(1, C.safeDeep);
+    ctx.fillStyle = g;
+    roundRect(x, top, w, h, 6); ctx.fill();
+    ctx.strokeStyle = 'rgba(143, 208, 255, 0.35)'; ctx.lineWidth = 1.5;
+    roundRect(x + 0.75, top + 0.75, w - 1.5, h - 1.5, 6); ctx.stroke();
+    ctx.fillStyle = 'rgba(143, 208, 255, 0.4)';
+    for (const [rx, ry] of [[x + 6, top + 6], [x + w - 6, top + 6], [x + 6, top + h - 6], [x + w - 6, top + h - 6]]) {
+      ctx.beginPath(); ctx.arc(rx, ry, 1.8, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.82)';
+    ctx.font = `600 ${Math.round(clamp(w * 0.21, 11, 15))}px ${DISPLAY}`;
+    ctx.fillText('касса', x + w / 2 + 2, top + 18);
+    for (let i = 0; i < ROWS; i++) {
+      const sy = L.rowsY[i], fl = slotFlash[i];
+      ctx.fillStyle = fl > 0 ? `rgba(143, 208, 255, ${0.25 + fl * 0.6})` : 'rgba(0, 0, 0, 0.35)';
+      roundRect(x + 7, sy - L.r * 1.05, w - 14, L.r * 2.1, 4); ctx.fill();
+      ctx.fillStyle = fl > 0.3 ? C.white : 'rgba(255, 255, 255, 0.55)';
+      ctx.font = `700 ${Math.round(L.r * 1.25)}px ${TEXT}`;
+      ctx.fillText('₽', x + w / 2 + 4, sy + 1);
+    }
+  }
+
+  function drawFlow(y, p, star, alpha, now) {
+    const r = L.r;
+    const xs = L.flowStart, xe = Math.min(flowX(p), L.valveX - r * 0.9);
+    if (xe - xs < 2) return;
+    const top = y - r * 0.55, h = r * 1.1;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    roundRect(xs, top, xe - xs, h, r * 0.4);
+    ctx.clip();
+    const g = ctx.createLinearGradient(0, top, 0, top + h);
+    if (star) { g.addColorStop(0, '#fff3c4'); g.addColorStop(1, C.goldDeep); }
+    else { g.addColorStop(0, C.gasLight); g.addColorStop(1, C.gasDeep); }
+    ctx.fillStyle = g;
+    ctx.fillRect(xs, top, xe - xs, h);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.22)'; // бегущие блики
+    const gap = r * 2.6, off = (now * 140) % gap;
+    for (let x = xs - gap + off; x < xe; x += gap) {
+      ctx.beginPath();
+      ctx.moveTo(x, top + h); ctx.lineTo(x + h * 0.6, top); ctx.lineTo(x + h * 0.6 + r * 0.5, top); ctx.lineTo(x + r * 0.5, top + h);
+      ctx.closePath(); ctx.fill();
+    }
+    const cr = h * 0.36, step = r * 3.4, coff = (now * 110) % step; // монеты
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = `700 ${Math.round(cr * 1.35)}px ${TEXT}`;
+    for (let x = xs + coff + cr; x < xe - cr; x += step) {
+      ctx.beginPath(); ctx.arc(x, y, cr, 0, Math.PI * 2);
+      ctx.fillStyle = star ? C.white : C.gold; ctx.fill();
+      ctx.fillStyle = star ? C.goldDeep : '#8a5a00';
+      ctx.fillText(star ? '★' : '₽', x, y + 0.5);
+    }
+    ctx.restore();
+  }
+
+  function drawValve(i, y, now, f) {
+    const r = L.r, x = L.valveX, wr = L.wheelR;
+    const cy = y - r * 1.55 - wr;
+    ctx.fillStyle = C.pipeJoint;
+    roundRect(x - r * 0.9, y - r * 1.25, r * 1.8, r * 2.5, 3); ctx.fill();
+    ctx.fillStyle = '#5b6573';
+    ctx.fillRect(x - 2.5, cy, 5, y - r * 1.25 - cy);
+    if (f) { // кран краснеет, когда поток подбирается к нему
+      const pulse = 0.5 + 0.5 * Math.sin(now * (6 + f.p * 16));
+      const a = clamp(0.15 + f.p * 0.55 + pulse * 0.15, 0, 0.9);
+      const rg = ctx.createRadialGradient(x, cy, wr * 0.3, x, cy, wr * 2.2);
+      rg.addColorStop(0, `rgba(214, 21, 44, ${a})`); rg.addColorStop(1, 'rgba(214, 21, 44, 0)');
+      ctx.fillStyle = rg;
+      ctx.beginPath(); ctx.arc(x, cy, wr * 2.2, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.save();
+    ctx.translate(x, cy);
+    ctx.rotate(valveAngle[i]);
+    ctx.strokeStyle = C.white; ctx.lineCap = 'round';
+    ctx.lineWidth = Math.max(2, wr * 0.17);
+    for (let k = 0; k < 3; k++) {
+      const a = (k * Math.PI) / 3;
+      ctx.beginPath(); ctx.moveTo(Math.cos(a) * wr, Math.sin(a) * wr); ctx.lineTo(-Math.cos(a) * wr, -Math.sin(a) * wr); ctx.stroke();
+    }
+    ctx.strokeStyle = C.red; ctx.lineWidth = Math.max(3, wr * 0.32);
+    ctx.beginPath(); ctx.arc(0, 0, wr, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = C.white;
+    ctx.beginPath(); ctx.arc(0, 0, wr * 0.28, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawRow(i, now) {
+    const f = flows[i];
+    const r = L.r;
+    let dy = 0;
+    if (f && state === 'playing' && f.p > 0.7 && !reduceMotion) dy = Math.sin(now * 55 + i * 1.7) * (f.p - 0.7) * 5;
+    const y = L.rowsY[i] + dy;
+    const g = ctx.createLinearGradient(0, y - r, 0, y + r);
+    g.addColorStop(0, C.pipeLight); g.addColorStop(0.45, C.pipe); g.addColorStop(1, C.pipeDark);
+    ctx.fillStyle = g;
+    ctx.fillRect(L.x0, y - r, L.xEnd - L.x0, r * 2);
+    ctx.fillStyle = C.channel; // смотровое окно трубы
+    roundRect(L.flowStart, y - r * 0.55, L.valveX - r * 0.9 - L.flowStart, r * 1.1, r * 0.4); ctx.fill();
+    if (f) drawFlow(y, f.p, f.star, 1, now);
+    for (const d of drains) {
+      if (d.row !== i) continue;
+      const k = d.t / DRAIN_TIME;
+      drawFlow(y, d.p * (1 - k), d.star, 1 - k, now);
+    }
+    ctx.fillStyle = C.pipeJoint; // стыки
+    const span = L.valveX - L.flowStart;
+    for (let k = 1; k <= 3; k++) {
+      const jx = L.flowStart + span * (k / 4);
+      ctx.fillRect(jx - 3, y - r * 1.18, 6, r * 2.36);
+    }
+    ctx.fillRect(L.side + L.riserW - 1, y - r * 1.22, 7, r * 2.44); // муфта у стояка
+    drawValve(i, y, now, f);
+  }
+
+  function drawParticles() {
+    for (const p of particles) {
+      ctx.globalAlpha = Math.max(0, 1 - p.t / p.life);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawFloaters() {
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (const f of floaters) {
+      const k = f.t / f.life, yy = f.y - k * 44;
+      ctx.globalAlpha = Math.max(0, 1 - k * k);
+      ctx.font = `700 ${f.size}px ${f.plain ? TEXT : DISPLAY}`;
+      if (!f.plain) {
+        ctx.lineWidth = 4; ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(16, 21, 29, 0.7)';
+        ctx.strokeText(f.text, f.x, yy);
+      }
+      ctx.fillStyle = f.color;
+      ctx.fillText(f.text, f.x, yy);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function draw(now) {
+    if (!L) return;
+    ctx.save();
+    if (shake > 0) {
+      const m = (shake / 0.35) * 7;
+      ctx.translate((Math.random() - 0.5) * m, (Math.random() - 0.5) * m);
+    }
+    drawSky();
+    drawRain();
+    drawRiser();
+    drawSafe();
+    for (let i = 0; i < ROWS; i++) drawRow(i, now);
+    drawParticles();
+    drawFloaters();
+    ctx.restore();
+  }
+
+  function frame(ts) {
+    const now = ts / 1000;
+    let dt = lastFrame ? now - lastFrame : 0;
+    lastFrame = now;
+    if (dt > 0.05) dt = 0.05;
+    if (state === 'playing') update(dt);
+    updateAmbient(dt);
+    draw(now);
+    requestAnimationFrame(frame);
+  }
+
+  /* ================= Управление ================= */
+  canvas.addEventListener('pointerdown', (e) => {
+    if (!L) return;
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const row = Math.floor((e.clientY - rect.top - L.padTop) / L.rowH);
+    tap(clamp(row, 0, ROWS - 1));
+  });
+  window.addEventListener('keydown', (e) => { // на компьютере: клавиши 1–5 и P для паузы
+    if (e.repeat) return;
+    if (/^[1-9]$/.test(e.key) && Number(e.key) <= ROWS) tap(Number(e.key) - 1);
+    else if (e.key === 'p' || e.key === 'з' || e.key === 'Escape') {
+      if (state === 'playing') pauseGame(); else if (state === 'paused') resumeGame();
+    }
+  });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); });
+  if (tg && tgAtLeast('8.0')) { try { tg.onEvent('deactivated', pauseGame); } catch (e) {} }
+  $('btn-start').addEventListener('click', startGame);
+  $('btn-again').addEventListener('click', startGame);
+  $('btn-resume').addEventListener('click', resumeGame);
+  ui.btnSend.addEventListener('click', sendResult);
+
+  /* ================= Старт ================= */
+  resetGame();
+  resize();
+  if (window.ResizeObserver) new ResizeObserver(() => resize()).observe(field);
+  else window.addEventListener('resize', resize);
+  if (tg) { try { tg.onEvent('viewportChanged', () => resize()); } catch (e) {} }
+  ui.bestStart.textContent = best > 0 ? `Личный рекорд: ${best}` : '';
+  if (document.fonts && document.fonts.load) document.fonts.load('700 20px "Oswald"').catch(() => {});
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
